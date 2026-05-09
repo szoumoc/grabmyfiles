@@ -12,8 +12,11 @@
 
 namespace server::service
 {
-    void runfileSender(int client_fd, const std::string &filePath){
-        std::ifstream file(filePath, std::ios::binary);
+    void runfileSender(int client_fd, const std::string filePath){
+        std::cout << "Starting file transfer for: " << filePath << std::endl;
+        std::ifstream file(filePath, std::ios::binary | std::ios::in);
+        std::cout << "Opened file: " << filePath << std::endl;
+        // std::ifstream is a class in C++ that provides functionality for reading from files. In this code, we create an instance of std::ifstream called file, and we open the file specified by filePath in binary mode (std::ios::binary). This allows us to read the contents of the file as raw bytes, which is important for transferring files over a network without any data corruption or formatting issues that can arise when using text mode.
         if (!file)
         {
             std::cerr << "Failed to open file: " << filePath << std::endl;
@@ -27,6 +30,7 @@ namespace server::service
         // The loop condition file.read(buffer, buffer_size) || file.gcount() > 0 is used to read data from the file in chunks of buffer_size bytes and send it to the client. The file.read function attempts to read buffer_size bytes from the file into the buffer. If it successfully reads the full buffer size, it returns a reference to the stream (which evaluates to true), and we proceed to send the data. However, if we reach the end of the file and there are fewer than buffer_size bytes left, file.read will return false, but we can still check how many bytes were actually read using file.gcount(). If gcount() returns a value greater than 0, it means we have some remaining data that needs to be sent to the client, even though we didn't fill the entire buffer. This allows us to ensure that all data from the file is sent, including any final partial chunk at the end of the file.
         {
             ssize_t bytes_sent = ::send(client_fd, buffer, file.gcount(), 0);
+            std::cout << "Sent " << bytes_sent << " bytes to client for file: " << filePath << std::endl;
             // file.gcount() returns the number of bytes that were actually read into the buffer by the last call to file.read. This is important because if we reach the end of the file and there are fewer than buffer_size bytes left, we need to know exactly how many bytes were read so that we can send only that amount to the client. By using file.gcount() as the length parameter in the send function, we ensure that we are sending the correct number of bytes from the buffer, even if it's less than the full buffer size.
             if (bytes_sent < 0)
             {
@@ -112,7 +116,7 @@ namespace server::service
                                      sizeof(client_ip));
                                      // inet_ntop is a function that converts an IP address from binary form (in this case, the sin_addr field of the client_address structure) to a human-readable string format. The parameters are as follows: AF_INET specifies that we are working with IPv4 addresses, &client_address.sin_addr is a pointer to the binary IP address that we want to convert, client_ip is a buffer where the resulting string will be stored, and sizeof(client_ip) specifies the size of the buffer to ensure that we don't overflow it. The function returns a pointer to the resulting string (client_ip) on success, or nullptr on failure. In this code, we use inet_ntop to convert the client's IP address to a readable format for logging purposes when a client connects to the server.
         std::cout << "Client connected: " << (ip ? ip : "?") << '\n';
-        std::thread(runfileSender, client_fd, filePath).detach(); 
+        std::thread(runfileSender, client_fd, filePath).join(); 
         // detach is a member function of the std::thread class that allows a thread to run independently from the thread object that created it. When you call detach on a thread, it means that the thread will continue to run in the background even after the thread object goes out of scope. This is useful when you want to start a thread to perform some work and you don't need to wait for it to finish or join it back to the main thread. In this code, we create a new thread to handle sending the file to the client (runfileSender) and then immediately detach it, allowing it to run independently while the main thread can continue accepting new connections or performing other tasks without being blocked by the file sending operation.
     }
 
