@@ -1,29 +1,45 @@
-name: UI CI
+name: Client Deploy - CI/CD for GitHub Pages
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'ui/**'
   pull_request:
+    branches:
+      - main
     paths:
       - 'ui/**'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to GitHub Pages after build
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   build:
     name: Build and Lint UI
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20.x]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20.x
 
       - name: Cache node modules
         uses: actions/cache@v4
@@ -31,25 +47,45 @@ jobs:
           path: |
             ui/node_modules
             ~/.npm
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('ui/package-lock.json') }}
+          key: ${{ runner.os }}-node-20-${{ hashFiles('ui/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-${{ matrix.node-version }}-
+            ${{ runner.os }}-node-20-
 
       - name: Install dependencies
         working-directory: ui
         run: npm ci
 
-      - name: Run lint
+      - name: Build static site
         working-directory: ui
-        run: npm run lint --if-present
+        env:
+          NODE_ENV: production
+        run: npm run build
 
-      - name: Run build
-        working-directory: ui
-        run: npm run build --if-present
+      - name: Setup GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
 
-      - name: Upload build artifact
-        if: success()
-        uses: actions/upload-artifact@v4
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: ui-build
-          path: ui/.next
+          path: client/out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: |
+      needs.build.result == 'success' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
+      )
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
