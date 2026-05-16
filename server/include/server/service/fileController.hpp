@@ -33,7 +33,12 @@ namespace server::services
         void applyCorsHeaders(httplib::Response &res) const;
         // handleCorsOrNotFound is a private member function that handles CORS headers and not found responses for HTTP requests. It is typically called when a request does not match any defined routes or when CORS preflight requests are received. The function checks the HTTP method of the request and applies CORS headers to the response. If the request method is OPTIONS, it returns a 204 No Content response, indicating that the preflight request was successful. For other methods, it leaves the response status as 404 Not Found, allowing the client to handle it accordingly. This function helps to ensure that CORS requests are properly handled while also providing a fallback for unmatched routes.
         void handleCorsOrNotFound(const httplib::Request &req, httplib::Response &res) const;
+        // UploadHandler + DownloadHandler
+        void handleUpload(const httplib::Request &req, httplib::Response &res);
+        // void handleDownload(const httplib::Request &req, httplib::Response &res);
 
+        static std::string makeUniqueName(const std::string &originalFilename);
+        static bool parsePortFromPath(const std::string &path, int &outPort);
         service::FileSharer fileSharer_;
         httplib::Server server_;
         std::filesystem::path uploadDir_;
