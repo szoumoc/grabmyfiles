@@ -66,7 +66,7 @@ export default function FileDownload({ onDownload, isDownloading }: FileDownload
           ) : (
             <>
               <FiDownload className="mr-2" />
-              <span>Download File</span>
+              <span>Download File.</span>
             </>
           )}
         </button>
