@@ -19,6 +19,7 @@ namespace server::service
     void fileSenderHandler(int client_fd, std::string file_path)
     {
         std::cout << "Starting to send file: " << file_path << '\n';
+        // Open the file to be sent
         std::ifstream input(file_path, std::ios::binary);
         if (!input)
         {
@@ -50,6 +51,7 @@ namespace server::service
         }
         // Send file content in 4096-byte chunks
         char buffer[4096];
+        // The loop reads chunks of the file into the buffer and sends them to the client. The read operation may not always fill the entire buffer, so we check the number of bytes read using input.gcount() to determine how many bytes were actually read and need to be sent. The inner loop ensures that all bytes read into the buffer are sent to the client, handling cases where send may not send all bytes in one call.
         while (input.read(buffer, sizeof(buffer)) || input.gcount() > 0)
         {
             std::size_t remaining = static_cast<std::size_t>(input.gcount());
@@ -80,6 +82,8 @@ namespace server::service
             const int port = server::utils::generateCode();
             if (available_files_.find(port) == available_files_.end())
             {
+                // This port is not currently in use, so we can offer the file on this port
+                // emplace is a member function of std::unordered_map that constructs a new element in-place. It takes the key and value as arguments and inserts them into the map if the key does not already exist. In this case, it inserts the port number as the key and the file path as the value into the available_files_ map. This allows us to keep track of which files are being offered on which ports, and we can later use this information to start the file server on the correct port when a client connects.
                 available_files_.emplace(port, filePath);
                 return port;
             }
